@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ALKG - Agenda Profissional</title>
+    <!-- Vue.js 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Axios -->
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="index.css">
+    
+
+</head>
+<body>
+    <div id="app">
+        <!-- Layout Principal -->
+        <div class="app-layout">
+            <!-- Sidebar -->
+            <aside class="sidebar" :class="{ 'open': sidebarOpen }">
+                <div class="sidebar-header">
+                    <i class="fa-solid fa-calendar-check" style="color: var(--primary-light);"></i> ALKG
+                </div>
+                <ul class="nav-menu">
+                    <li class="nav-item" :class="{ active: currentView === 'dashboard' }" @click="changeView('dashboard')">
+                        <i class="fa-solid fa-chart-pie"></i> Dashboard
+                    </li>
+                    <li class="nav-item" :class="{ active: currentView === 'agenda' }" @click="changeView('agenda')">
+                        <i class="fa-solid fa-calendar-days"></i> Agenda
+                    </li>
+                    <li class="nav-item" :class="{ active: currentView === 'clientes' }" @click="changeView('clientes')">
+                        <i class="fa-solid fa-users"></i> Clientes
+                    </li>
+                    <li class="nav-item" :class="{ active: currentView === 'estatisticas' }" @click="changeView('estatisticas')">
+                        <i class="fa-solid fa-chart-line"></i> Estatísticas
+                    </li>
+                </ul>
+            </aside>
+
+            <!-- Main Content -->
+            <div class="main-wrapper">
+                <!-- Header -->
+                <header class="top-header">
+                    <button class="mobile-toggle" @click="sidebarOpen = !sidebarOpen">
+                        <i class="fa-solid fa-bars"></i>
+                    </button>
+                    <div style="flex:1"></div>
+                    <div class="header-user">
+                        <button class="btn-icon" @click="toggleTheme" title="Alternar Tema" style="border: none; background: transparent; font-size: 1.25rem;">
+                            <i :class="isDarkMode ? 'fa-solid fa-sun' : 'fa-solid fa-moon'" :style="{ color: isDarkMode ? '#FBBF24' : '#64748B' }"></i>
+                        </button>
+                        <span class="user-info">Bem-vindo, Admin</span>
+                    </div>
+                </header>
+
+                <!-- Content Area -->
+                <main class="content-area" @click="sidebarOpen = false">
+                    
+                    <!-- View: Dashboard -->
+                    <div v-if="currentView === 'dashboard'">
+                        <h2 class="page-title">Dashboard</h2>
+                        
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-icon icon-blue"><i class="fa-solid fa-calendar-day"></i></div>
+                                <div class="stat-info">
+                                    <h3>Agendamentos Hoje</h3>
+                                    <p>{{ dashboardData.agendamentosHoje }}</p>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon icon-green"><i class="fa-solid fa-users"></i></div>
+                                <div class="stat-info">
+                                    <h3>Total de Clientes</h3>
+                                    <p>{{ dashboardData.totalClientes }}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="dashboard-grid">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3 class="card-title">Agendamentos de Hoje</h3>
+                                    <button class="btn btn-primary btn-sm" style="padding: 0.4rem 1rem; font-size: 0.75rem;" @click="changeView('agenda')">Ver Todos</button>
+                                </div>
+                                <div class="card-body" style="padding: 0;">
+                                    <div class="table-responsive">
+                                        <table v-if="dashboardData.agendamentosDoDia && dashboardData.agendamentosDoDia.length > 0">
+                                            <thead>
+                                                <tr>
+                                                    <th>Horário</th>
+                                                    <th>Cliente</th>
+                                                    <th>Serviço</th>
+                                                    <th>Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr v-for="ag in dashboardData.agendamentosDoDia" :key="ag.id">
+                                                    <td>{{ ag.hora.substring(0,5) }}</td>
+                                                    <td>{{ ag.clientes?.nome }}</td>
+                                                    <td>{{ ag.servico }}</td>
+                                                    <td>
+                                                        <span :class="'badge badge-' + ag.status">{{ ag.status }}</span>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                        <div v-else class="p-6 text-center" style="color: var(--text-muted);">
+                                            Nenhum agendamento para hoje.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3 class="card-title">Próximos Compromissos</h3>
+                                </div>
+                                <div class="card-body">
+                                    <div v-if="dashboardData.proximos && dashboardData.proximos.length > 0">
+                                        <div class="list-item" v-for="ag in dashboardData.proximos" :key="ag.id">
+                                            <div class="list-item-content">
+                                                <h4>{{ ag.hora.substring(0,5) }} - {{ ag.clientes?.nome }}</h4>
+                                                <p>{{ ag.servico }}</p>
+                                            </div>
+                                            <span :class="'badge badge-' + ag.status">{{ ag.status }}</span>
+                                        </div>
+                                    </div>
+                                    <div v-else class="text-center" style="color: var(--text-muted); padding: 1rem 0;">
+                                        Nenhum compromisso próximo.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- View: Agenda -->
+                    <div v-if="currentView === 'agenda'">
+                        <div class="toolbar">
+                            <h2 class="page-title" style="margin:0;">Agenda</h2>
+                            <button class="btn btn-primary" @click="openAgendamentoModal()">
+                                <i class="fa-solid fa-plus"></i> Novo Agendamento
+                            </button>
+                        </div>
+
+                        <div class="card mb-6">
+                            <div class="card-body">
+                                <div class="filters">
+                                    <div class="form-group" style="margin-bottom:0;">
+                                        <input type="date" v-model="filtros.data" class="form-control">
+                                    </div>
+                                    <div class="form-group" style="margin-bottom:0;">
+                                        <select v-model="filtros.status" class="form-control">
+                                            <option value="">Todos os Status</option>
+                                            <option value="confirmado">Confirmado</option>
+                                            <option value="pendente">Pendente</option>
+                                            <option value="cancelado">Cancelado</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group" style="margin-bottom:0; flex:1; min-width: 200px;">
+                                        <input type="text" v-model="filtros.busca" class="form-control" placeholder="Buscar cliente ou serviço...">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="table-responsive">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Data</th>
+                                            <th>Hora</th>
+                                            <th>Cliente</th>
+                                            <th>Serviço</th>
+                                            <th>Status</th>
+                                            <th>Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="ag in agendamentosFiltrados" :key="ag.id">
+                                            <td>{{ formatarData(ag.data) }}</td>
+                                            <td>{{ ag.hora.substring(0,5) }}</td>
+                                            <td>{{ ag.clientes?.nome }}</td>
+                                            <td>{{ ag.servico }}</td>
+                                            <td><span :class="'badge badge-' + ag.status">{{ ag.status }}</span></td>
+                                            <td class="actions-cell">
+                                                <button class="btn-icon" @click="openAgendamentoModal(ag)" title="Editar"><i class="fa-solid fa-pen"></i></button>
+                                                <button class="btn-icon" style="color:var(--danger)" @click="confirmDelete('agendamento', ag.id)" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+                                            </td>
+                                        </tr>
+                                        <tr v-if="agendamentosFiltrados.length === 0">
+                                            <td colspan="6" class="text-center">Nenhum agendamento encontrado.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- View: Clientes -->
+                    <div v-if="currentView === 'clientes'">
+                        <div class="toolbar">
+                            <h2 class="page-title" style="margin:0;">Clientes</h2>
+                            <button class="btn btn-primary" @click="openClienteModal()">
+                                <i class="fa-solid fa-plus"></i> Novo Cliente
+                            </button>
+                        </div>
+
+                        <div class="card mb-6">
+                            <div class="card-body">
+                                <div class="form-group" style="margin-bottom:0; max-width: 400px;">
+                                    <input type="text" v-model="buscaCliente" class="form-control" placeholder="Buscar por nome ou telefone...">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="table-responsive">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Nome</th>
+                                            <th>Telefone</th>
+                                            <th>E-mail</th>
+                                            <th>Cadastrado em</th>
+                                            <th>Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="cliente in clientesFiltrados" :key="cliente.id">
+                                            <td>{{ cliente.nome }}</td>
+                                            <td>{{ cliente.telefone }}</td>
+                                            <td>{{ cliente.email || '-' }}</td>
+                                            <td>{{ formatarData(cliente.created_at.substring(0,10)) }}</td>
+                                            <td class="actions-cell">
+                                                <button class="btn-icon" @click="openClienteModal(cliente)" title="Editar"><i class="fa-solid fa-pen"></i></button>
+                                                <button class="btn-icon" style="color:var(--danger)" @click="confirmDelete('cliente', cliente.id)" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+                                            </td>
+                                        </tr>
+                                        <tr v-if="clientesFiltrados.length === 0">
+                                            <td colspan="5" class="text-center">Nenhum cliente encontrado.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- View: Estatisticas -->
+                    <div v-if="currentView === 'estatisticas'">
+                        <h2 class="page-title">Estatísticas</h2>
+                        
+                        <div class="dashboard-grid mb-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3 class="card-title">Agendamentos (Últimos 7 dias)</h3>
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="chartDias"></canvas>
+                                </div>
+                            </div>
+                            
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3 class="card-title">Status dos Agendamentos</h3>
+                                </div>
+                                <div class="card-body flex justify-center items-center">
+                                    <div style="width: 200px; height: 200px;">
+                                        <canvas id="chartStatus"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">Ranking de Serviços</h3>
+                            </div>
+                            <div class="card-body">
+                                <table v-if="Object.keys(estatisticasData.servicosRanking || {}).length > 0">
+                                    <thead>
+                                        <tr>
+                                            <th>Serviço</th>
+                                            <th>Quantidade</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="(qtd, servico) in estatisticasData.servicosRanking" :key="servico">
+                                            <td>{{ servico }}</td>
+                                            <td>{{ qtd }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                <div v-else class="text-center text-muted">Sem dados para exibir.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                </main>
+            </div>
+        </div>
+
+        <!-- Modal Agendamento -->
+        <div class="modal-overlay" v-if="showModalAgendamento">
+            <div class="modal-container">
+                <div class="modal-header">
+                    <h3 class="modal-title">{{ agendamentoForm.id ? 'Editar Agendamento' : 'Novo Agendamento' }}</h3>
+                    <button class="btn-close" @click="showModalAgendamento = false"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <form @submit.prevent="saveAgendamento">
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label class="form-label">Cliente *</label>
+                            <select v-model="agendamentoForm.cliente_id" class="form-control" required>
+                                <option value="" disabled>Selecione um cliente</option>
+                                <option v-for="c in clientes" :key="c.id" :value="c.id">{{ c.nome }} ({{ c.telefone }})</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Serviço *</label>
+                            <input type="text" v-model="agendamentoForm.servico" class="form-control" placeholder="Ex: Corte de cabelo" required>
+                        </div>
+                        <div class="flex gap-4">
+                            <div class="form-group w-full">
+                                <label class="form-label">Data *</label>
+                                <input type="date" v-model="agendamentoForm.data" class="form-control" required>
+                            </div>
+                            <div class="form-group w-full">
+                                <label class="form-label">Hora *</label>
+                                <input type="time" v-model="agendamentoForm.hora" class="form-control" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Status</label>
+                            <select v-model="agendamentoForm.status" class="form-control">
+                                <option value="pendente">Pendente</option>
+                                <option value="confirmado">Confirmado</option>
+                                <option value="cancelado">Cancelado</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Observações</label>
+                            <textarea v-model="agendamentoForm.observacoes" class="form-control" rows="3"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @click="showModalAgendamento = false">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Salvar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Modal Cliente -->
+        <div class="modal-overlay" v-if="showModalCliente">
+            <div class="modal-container">
+                <div class="modal-header">
+                    <h3 class="modal-title">{{ clienteForm.id ? 'Editar Cliente' : 'Novo Cliente' }}</h3>
+                    <button class="btn-close" @click="showModalCliente = false"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <form @submit.prevent="saveCliente">
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label class="form-label">Nome *</label>
+                            <input type="text" v-model="clienteForm.nome" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Telefone *</label>
+                            <input type="text" v-model="clienteForm.telefone" class="form-control" placeholder="(00) 00000-0000" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">E-mail</label>
+                            <input type="email" v-model="clienteForm.email" class="form-control">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @click="showModalCliente = false">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Salvar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Modal Confirmação de Exclusão -->
+        <div class="modal-overlay" v-if="showDeleteModal">
+            <div class="modal-container" style="max-width: 400px;">
+                <div class="modal-header">
+                    <h3 class="modal-title">Confirmar Exclusão</h3>
+                    <button class="btn-close" @click="showDeleteModal = false"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="modal-body">
+                    <p>Tem certeza que deseja excluir este registro?</p>
+                    <p v-if="deleteType === 'cliente'" style="color:var(--danger); font-size: 0.875rem; margin-top: 0.5rem;">
+                        <strong>Atenção:</strong> Todos os agendamentos vinculados a este cliente também serão excluídos.
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @click="showDeleteModal = false">Cancelar</button>
+                    <button class="btn btn-danger" @click="executeDelete">Excluir</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toasts Container -->
+        <div class="toast-container">
+            <div v-for="toast in toasts" :key="toast.id" :class="['toast', 'toast-' + toast.type]">
+                <i :class="toast.type === 'success' ? 'fa-solid fa-check-circle' : 'fa-solid fa-circle-exclamation'"></i>
+                {{ toast.message }}
+            </div>
+        </div>
+
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
